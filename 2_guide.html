@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>課前導讀｜微觀細胞研究所</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="1_home.html">⌕ 微觀細胞研究所</a>
+    <p>課前導讀</p>
+    <div class="progress-group"><span>進度 10％</span><span class="progress-track"><span style="width:10%"></span></span></div>
+  </header>
+  <nav class="course-progress" aria-label="課程進度">
+    <a class="course-step completed" href="1_home.html"><span>✓</span><strong>首頁</strong><small>已完成</small></a>
+    <a class="course-step current" href="2_guide.html" aria-current="page"><span>2</span><strong>課前導讀</strong><small>進行中</small></a>
+    <a class="course-step locked" id="progress-lesson" aria-disabled="true"><span>3</span><strong>細胞的發現</strong><small>完成本頁解鎖</small></a>
+    <span class="course-step locked"><span>4</span><strong>形態與功能</strong><small>尚未解鎖</small></span>
+    <span class="course-step locked"><span>5</span><strong>細胞構造</strong><small>尚未解鎖</small></span>
+  </nav>
+  <main class="content-shell">
+    <section>
+      <div class="content-card intro-card">
+        <p class="eyebrow">開始前，先看研究任務</p>
+        <h1>今天要破解的三個問題</h1>
+        <div class="mission-grid">
+          <article><span>01</span><h2>細胞怎麼被發現？</h2><p>找出觀察工具、科學證據與細胞學說的關係。</p></article>
+          <article><span>02</span><h2>為什麼形態不同？</h2><p>從外形線索推論不同細胞的功能。</p></article>
+          <article><span>03</span><h2>細胞有哪些構造？</h2><p>比較動物與植物細胞的共同點和差異。</p></article>
+        </div>
+      </div>
+      <div class="content-card warmup-card">
+        <p class="eyebrow">課前想一想</p>
+        <h2>所有植物細胞都具有葉綠體嗎？</h2>
+        <p>先保留你的想法。正式課程會用<span class="keyword keyword-orange">洋蔥表皮細胞</span>與<span class="keyword keyword-purple">保衛細胞</span>找證據。</p>
+        <label class="reflection-label">我的初步想法
+          <select id="warmup-choice">
+            <option value="">請選擇</option>
+            <option>是</option>
+            <option>不是</option>
+            <option>目前不確定</option>
+          </select>
+        </label>
+      </div>
+      <nav class="page-navigation">
+        <a class="secondary-button" href="1_home.html">← 返回首頁</a>
+        <a class="primary-button disabled-link" id="guide-next" aria-disabled="true" href="3_cell-discovery.html">開始正式課程 →</a>
+      </nav>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
