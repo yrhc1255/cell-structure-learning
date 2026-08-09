@@ -1,6 +1,10 @@
 const COURSE_STORAGE_KEY = 'cellStructureDemo';
 const course = window.CELL_COURSE;
 
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) window.location.reload();
+});
+
 function courseState() {
   try { return JSON.parse(localStorage.getItem(COURSE_STORAGE_KEY)) || {}; }
   catch { return {}; }

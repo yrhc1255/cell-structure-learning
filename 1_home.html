@@ -1,10 +1,10 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>微觀細胞研究所</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20260809-3">
 </head>
 <body class="home-page">
   <nav class="course-progress" aria-label="課程進度">
@@ -28,11 +28,11 @@
       <p class="eyebrow">研究任務 02</p>
       <h1>微觀細胞研究所</h1>
       <p class="lead">從虎克的軟木栓觀察出發，破解細胞的形態、功能與構造，建立你的細胞證據檔案。</p>
-      <form id="student-form" class="identity-card">
+      <form id="student-form" class="identity-card" autocomplete="off">
         <h2>建立研究員資料</h2>
         <div class="form-grid">
           <label>班級<input id="class-code" autocomplete="off" required placeholder="例如：701"></label>
-          <label>座號<input id="seat-number" type="number" min="1" max="99" required placeholder="例如：12"></label>
+          <label>座號<input id="seat-number" type="number" min="1" max="99" autocomplete="off" required placeholder="例如：12"></label>
           <label class="full">姓名<input id="name-code" autocomplete="off" required placeholder="請自行輸入"></label>
         </div>
         <p id="form-message" class="form-message" aria-live="polite"></p>
@@ -48,6 +48,6 @@
       </div>
     </section>
   </main>
-  <script src="app.js"></script>
+  <script src="app.js?v=20260809-3"></script>
 </body>
 </html>

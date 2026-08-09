@@ -1,5 +1,9 @@
 const STORAGE_KEY = 'cellStructureDemo';
 
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) window.location.reload();
+});
+
 function shuffleControls(form) {
   const options = [...form.querySelectorAll(':scope > .answer-option')];
   for (let index = options.length - 1; index > 0; index -= 1) {
@@ -101,6 +105,10 @@ if (warmupChoice) {
     writeState({ warmupChoice: warmupChoice.value, guideCompleted: Boolean(warmupChoice.value), currentPage: 'guide' });
     updateGuide();
   });
+  window.addEventListener('pageshow', () => {
+    warmupChoice.value = readState().warmupChoice || '';
+    updateGuide();
+  });
 }
 
 const lessonQuestions = [...document.querySelectorAll('[data-question]')];
@@ -159,6 +167,11 @@ if (lessonQuestions.length) {
     const form = card.querySelector('form');
     const checkButton = form.querySelector('.check-question');
     const feedback = card.querySelector('.feedback');
+    form.reset();
+    form.querySelectorAll('input,select').forEach((control) => { control.disabled = false; });
+    form.querySelectorAll('.answer-option').forEach((option) => option.classList.remove('incorrect', 'correct'));
+    feedback.hidden = true;
+    checkButton.disabled = true;
     shuffleControls(form);
 
     if (completedIds.has(questionId)) markQuestionComplete(card);
@@ -195,6 +208,19 @@ if (lessonQuestions.length) {
           checkButton.disabled = true;
         });
       }
+    });
+  });
+
+  window.addEventListener('pageshow', () => {
+    const latestAnswers = new Set(readState().discoveryCorrectAnswers || []);
+    lessonQuestions.forEach((card) => {
+      if (latestAnswers.has(card.dataset.question)) return;
+      const form = card.querySelector('form');
+      form.reset();
+      form.querySelectorAll('input,select').forEach((control) => { control.disabled = false; });
+      form.querySelectorAll('.answer-option').forEach((option) => option.classList.remove('incorrect', 'correct'));
+      form.querySelector('.check-question').disabled = true;
+      card.querySelector('.feedback').hidden = true;
     });
   });
 
