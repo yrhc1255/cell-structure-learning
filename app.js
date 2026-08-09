@@ -65,7 +65,12 @@ if (studentForm) {
       document.querySelector('#form-message').textContent = '請完成班級代號、座號與名稱代碼。';
       return;
     }
-    writeState({ classCode, seatNumber, nameCode, currentPage: 'guide' });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      classCode,
+      seatNumber,
+      nameCode,
+      currentPage: 'guide'
+    }));
     window.location.href = '2_guide.html';
   });
 }
