@@ -53,6 +53,33 @@ function clearSavedAnswers(keys) {
   return state;
 }
 
+function createCourseSessionId() {
+  const random = new Uint32Array(1);
+  crypto.getRandomValues(random);
+  return `${Date.now()}-${random[0]}`;
+}
+
+function resetCourseFromHomeEntry() {
+  let cameFromHome = false;
+  try {
+    const referrerPath = new URL(document.referrer).pathname;
+    cameFromHome = referrerPath.endsWith('/1_home.html') || referrerPath === '/';
+  } catch {
+    cameFromHome = false;
+  }
+  if (!cameFromHome) return null;
+  const previous = readState();
+  const fresh = {
+    classCode: previous.classCode || '',
+    seatNumber: previous.seatNumber || '',
+    nameCode: previous.nameCode || '',
+    currentPage: 'guide',
+    courseSessionId: createCourseSessionId()
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+  return fresh;
+}
+
 const studentForm = document.querySelector('#student-form');
 if (studentForm) {
   const saved = readState();
@@ -73,7 +100,8 @@ if (studentForm) {
       classCode,
       seatNumber,
       nameCode,
-      currentPage: 'guide'
+      currentPage: 'guide',
+      courseSessionId: createCourseSessionId()
     }));
     window.location.href = '2_guide.html';
   });
@@ -81,7 +109,8 @@ if (studentForm) {
 
 const warmupChoice = document.querySelector('#warmup-choice');
 if (warmupChoice) {
-  const saved = isPageReload() ? clearSavedAnswers(['warmupChoice']) : readState();
+  const homeEntryState = resetCourseFromHomeEntry();
+  const saved = homeEntryState || (isPageReload() ? clearSavedAnswers(['warmupChoice']) : readState());
   warmupChoice.value = saved.warmupChoice || '';
   const nextLink = document.querySelector('#guide-next');
   const progressLesson = document.querySelector('#progress-lesson');
