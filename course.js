@@ -10,6 +10,18 @@ function saveCourseState(patch) {
   localStorage.setItem(COURSE_STORAGE_KEY,JSON.stringify(next));
   return next;
 }
+function isPageReload() {
+  const navigation = performance.getEntriesByType('navigation')[0];
+  return navigation?.type === 'reload' || performance.navigation?.type === 1;
+}
+function clearModuleAttempt(pageId) {
+  const state=courseState();
+  delete state[`${pageId}Correct`];
+  delete state[`${pageId}Answered`];
+  delete state[`${pageId}Score`];
+  localStorage.setItem(COURSE_STORAGE_KEY,JSON.stringify(state));
+  return state;
+}
 function completedSet(state=courseState()) {
   const ids = new Set(state.completedModules || []);
   if (state.classCode && state.seatNumber && state.nameCode) ids.add('home');
@@ -29,8 +41,25 @@ function markModuleComplete(id,extra={}) {
 function escapeText(value) {
   return String(value).replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
 }
+function shuffleArray(items) {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const random = new Uint32Array(1);
+    crypto.getRandomValues(random);
+    const swapIndex = random[0] % (index + 1);
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
+}
+function shuffledQuestionOptions(question) {
+  if (question.type !== 'select') return shuffleArray(question.options);
+  return [
+    ...question.options.filter(([value]) => value === ''),
+    ...shuffleArray(question.options.filter(([value]) => value !== ''))
+  ];
+}
 function questionMarkup(question,index){
-  const options=question.options.map(([value,label])=>{
+  const options=shuffledQuestionOptions(question).map(([value,label])=>{
     if(question.type==='select') return `<option value="${escapeText(value)}">${escapeText(label)}</option>`;
     const type=question.type==='checkbox'?'checkbox':'radio';
     return `<label class="answer-option"><input type="${type}" name="question-${index}" value="${escapeText(value)}"><span>${escapeText(label)}</span></label>`;
@@ -45,6 +74,7 @@ if(moduleRoot){
   if(!module){ location.replace('1_home.html'); }
   else if(!isUnlocked(pageId)){ location.replace(course.order[Math.max(0,index-1)].url); }
   else {
+    if(isPageReload()) clearModuleAttempt(pageId);
     document.title=`${module.title}｜微觀細胞研究所`; document.querySelector('#module-unit').textContent=module.unit;
     const state=courseState(); const percent=Math.round(index/(course.order.length-1)*100);
     document.querySelector('#module-progress-label').textContent=`進度 ${percent}％`; document.querySelector('#module-progress').style.width=`${percent}%`;
@@ -57,12 +87,12 @@ if(moduleRoot){
       const count=module.assessment?answered.size:correct.size;
       const complete=count===module.questions.length; next.classList.toggle('disabled-link',!complete); next.setAttribute('aria-disabled',String(!complete));
       if(module.assessment){
-        const score=Math.round(correct.size/module.questions.length*100);
+        const score=module.scoreMode==='count'?correct.size:Math.round(correct.size/module.questions.length*100);
         document.querySelector('#assessment-score-value').textContent=`${score} 分`;
         document.querySelector('#assessment-score-detail').textContent=complete?`本次成績已保存：答對 ${correct.size}／${module.questions.length} 題。`:`已完成 ${answered.size}／${module.questions.length} 題，答對 ${correct.size} 題。`;
         document.querySelector('#assessment-score').classList.toggle('score-complete',complete);
       }
-      if(complete){ const score=Math.round(correct.size/module.questions.length*100); const extra={}; extra[`${pageId}Score`]=score; markModuleComplete(pageId,extra); }
+      if(complete){ const score=module.scoreMode==='count'?correct.size:Math.round(correct.size/module.questions.length*100); const extra={}; extra[`${pageId}Score`]=score; const latest=markModuleComplete(pageId,extra); window.uploadCellScores?.(latest); }
     }
     function values(form){const vals=[...form.querySelectorAll('input:checked')].map(x=>x.value);const select=form.querySelector('select');if(select?.value)vals.push(select.value);return vals.sort();}
     document.querySelectorAll('.module-question').forEach((card,qIndex)=>{
@@ -80,8 +110,22 @@ if(moduleRoot){
   }
 }
 
+document.querySelectorAll('[data-cell-explorer]').forEach((explorer)=>{
+  const status=explorer.querySelector('[data-structure-status]');
+  const buttons=[...explorer.querySelectorAll('[data-structure]')];
+  const activate=(name)=>{
+    explorer.dataset.activeStructure=name;
+    buttons.forEach(button=>{const active=button.dataset.structure===name;button.classList.toggle('active',active);button.setAttribute('aria-pressed',String(active));});
+    explorer.querySelectorAll('[data-hotspot]').forEach(hotspot=>hotspot.classList.toggle('active',hotspot.dataset.hotspot===name));
+    const selected=buttons.find(button=>button.dataset.structure===name);
+    if(status&&selected) status.textContent=`已選取：${selected.dataset.label}。${selected.dataset.function}`;
+  };
+  buttons.forEach(button=>button.addEventListener('click',()=>activate(button.dataset.structure)));
+  if(buttons[0]) activate(buttons[0].dataset.structure);
+});
+
 const resultRoot=document.querySelector('#result-summary');
 if(resultRoot){
   if(!isUnlocked('result')) location.replace('13_comprehensive-challenge.html');
-  else { markModuleComplete('result'); const state=courseState(); resultRoot.innerHTML=`<article class="content-card"><h2>2-1 形成性評量</h2><strong class="score-value">${state.assess1Score ?? '—'} 分</strong><p>完成即通過，分數用於找出複習方向。</p></article><article class="content-card"><h2>2-2 形成性評量</h2><strong class="score-value">${state.assess2Score ?? '—'} 分</strong><p>可返回形成性評量頁重新檢視。</p></article><article class="content-card"><h2>學習進度</h2><strong class="score-value">100％</strong><p>所有指定頁面皆已完成。</p></article>`; }
+  else { markModuleComplete('result'); const state=courseState(); window.uploadCellScores?.(state); resultRoot.innerHTML=`<article class="content-card"><h2>形成性評量（一）</h2><strong class="score-value">${state.assess1Score ?? '—'} 分</strong><p>百分制，完成後自動上傳。</p></article><article class="content-card"><h2>形成性評量（二）</h2><strong class="score-value">${state.assess2Score ?? '—'} 分</strong><p>百分制，完成後自動上傳。</p></article><article class="content-card"><h2>綜合挑戰</h2><strong class="score-value">${state.challengeScore ?? '—'} 分</strong><p>答對 1 題得 1 分，共 ${course.modules.challenge.questions.length} 分。</p></article><p class="score-sync-status" id="score-sync-status" aria-live="polite">正在確認 Firebase 上傳狀態……</p>`; }
 }

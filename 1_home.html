@@ -7,6 +7,22 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="home-page">
+  <nav class="course-progress" aria-label="課程進度">
+    <a class="course-step current" href="1_home.html" aria-current="page"><span>1</span><strong>首頁</strong><small>進行中</small></a>
+    <span class="course-step locked"><span>2</span><strong>課前導讀</strong><small>完成資料後解鎖</small></span>
+    <span class="course-step locked"><span>3</span><strong>細胞的發現</strong><small>尚未解鎖</small></span>
+    <span class="course-step locked"><span>4</span><strong>形態與功能</strong><small>尚未解鎖</small></span>
+    <span class="course-step locked"><span>5</span><strong>形成性評量（一）</strong><small>尚未解鎖</small></span>
+    <span class="course-step locked"><span>6</span><strong>動物細胞</strong><small>尚未解鎖</small></span>
+    <span class="course-step locked"><span>7</span><strong>植物細胞</strong><small>尚未解鎖</small></span>
+    <span class="course-step locked"><span>8</span><strong>動植物比較</strong><small>尚未解鎖</small></span>
+    <span class="course-step locked"><span>9</span><strong>製片觀察</strong><small>尚未解鎖</small></span>
+    <span class="course-step locked"><span>10</span><strong>顯微影像</strong><small>尚未解鎖</small></span>
+    <span class="course-step locked"><span>11</span><strong>形成性評量（二）</strong><small>尚未解鎖</small></span>
+    <span class="course-step locked"><span>12</span><strong>閱讀素養</strong><small>尚未解鎖</small></span>
+    <span class="course-step locked"><span>13</span><strong>綜合挑戰</strong><small>尚未解鎖</small></span>
+    <span class="course-step locked"><span>14</span><strong>學習結果</strong><small>尚未解鎖</small></span>
+  </nav>
   <main class="hero-shell">
     <section class="hero-copy">
       <p class="eyebrow">研究任務 02</p>
@@ -15,9 +31,9 @@
       <form id="student-form" class="identity-card">
         <h2>建立研究員資料</h2>
         <div class="form-grid">
-          <label>班級代號<input id="class-code" autocomplete="off" required placeholder="例如：701"></label>
+          <label>班級<input id="class-code" autocomplete="off" required placeholder="例如：701"></label>
           <label>座號<input id="seat-number" type="number" min="1" max="99" required placeholder="例如：12"></label>
-          <label class="full">名稱代碼<input id="name-code" autocomplete="off" required placeholder="請自行輸入名稱代碼"></label>
+          <label class="full">姓名<input id="name-code" autocomplete="off" required placeholder="請自行輸入"></label>
         </div>
         <p id="form-message" class="form-message" aria-live="polite"></p>
         <button class="primary-button" type="submit">進入研究所 <span aria-hidden="true">→</span></button>

@@ -1,5 +1,28 @@
 const STORAGE_KEY = 'cellStructureDemo';
 
+function shuffleControls(form) {
+  const options = [...form.querySelectorAll(':scope > .answer-option')];
+  for (let index = options.length - 1; index > 0; index -= 1) {
+    const random = new Uint32Array(1);
+    crypto.getRandomValues(random);
+    const swapIndex = random[0] % (index + 1);
+    [options[index], options[swapIndex]] = [options[swapIndex], options[index]];
+  }
+  const button = form.querySelector('.check-question');
+  options.forEach(option => form.insertBefore(option, button));
+  const select = form.querySelector('select');
+  if (select) {
+    const choices = [...select.options].filter(option => option.value !== '');
+    for (let index = choices.length - 1; index > 0; index -= 1) {
+      const random = new Uint32Array(1);
+      crypto.getRandomValues(random);
+      const swapIndex = random[0] % (index + 1);
+      [choices[index], choices[swapIndex]] = [choices[swapIndex], choices[index]];
+    }
+    choices.forEach(option => select.appendChild(option));
+  }
+}
+
 function readState() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
@@ -12,6 +35,18 @@ function writeState(patch) {
   const next = { ...readState(), ...patch };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   return next;
+}
+
+function isPageReload() {
+  const navigation = performance.getEntriesByType('navigation')[0];
+  return navigation?.type === 'reload' || performance.navigation?.type === 1;
+}
+
+function clearSavedAnswers(keys) {
+  const state = readState();
+  keys.forEach((key) => delete state[key]);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  return state;
 }
 
 const studentForm = document.querySelector('#student-form');
@@ -37,7 +72,7 @@ if (studentForm) {
 
 const warmupChoice = document.querySelector('#warmup-choice');
 if (warmupChoice) {
-  const saved = readState();
+  const saved = isPageReload() ? clearSavedAnswers(['warmupChoice']) : readState();
   warmupChoice.value = saved.warmupChoice || '';
   const nextLink = document.querySelector('#guide-next');
   const progressLesson = document.querySelector('#progress-lesson');
@@ -65,7 +100,9 @@ if (warmupChoice) {
 
 const lessonQuestions = [...document.querySelectorAll('[data-question]')];
 if (lessonQuestions.length) {
-  const saved = readState();
+  const saved = isPageReload()
+    ? clearSavedAnswers(['discoveryQuestionCorrect', 'discoveryCorrectAnswers'])
+    : readState();
   const nextLink = document.querySelector('#lesson-next');
   const allQuestionIds = lessonQuestions.map((card) => card.dataset.question);
   const migratedAnswers = saved.discoveryQuestionCorrect ? ['q1'] : [];
@@ -117,6 +154,7 @@ if (lessonQuestions.length) {
     const form = card.querySelector('form');
     const checkButton = form.querySelector('.check-question');
     const feedback = card.querySelector('.feedback');
+    shuffleControls(form);
 
     if (completedIds.has(questionId)) markQuestionComplete(card);
 
