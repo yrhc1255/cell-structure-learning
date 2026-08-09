@@ -82,10 +82,16 @@ function resetCourseFromHomeEntry() {
 
 const studentForm = document.querySelector('#student-form');
 if (studentForm) {
-  const saved = readState();
-  document.querySelector('#class-code').value = saved.classCode || '';
-  document.querySelector('#seat-number').value = saved.seatNumber || '';
-  document.querySelector('#name-code').value = saved.nameCode || '';
+  const clearHomeForm = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    studentForm.reset();
+    document.querySelector('#class-code').value = '';
+    document.querySelector('#seat-number').value = '';
+    document.querySelector('#name-code').value = '';
+    document.querySelector('#form-message').textContent = '';
+  };
+  clearHomeForm();
+  window.addEventListener('pageshow', clearHomeForm);
 
   studentForm.addEventListener('submit', (event) => {
     event.preventDefault();
