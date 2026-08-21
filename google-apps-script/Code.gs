@@ -20,19 +20,22 @@ function doPost(e) {
     if (!sheet) return json_({ok: false, error: '找不到成績總表'});
 
     ensureHeaders_(sheet);
-    const row = findStudentRow_(sheet, classCode, seatNumber, nameCode);
-    const current = row ? sheet.getRange(row, 1, 1, HEADERS.length).getValues()[0] : [];
-    const assess1 = scoreOrExisting_(payload.assess1Score, current[4], 0, 100);
-    const assess2 = scoreOrExisting_(payload.assess2Score, current[5], 0, 100);
+    const rows = findStudentRows_(sheet, classCode, seatNumber, nameCode);
+    const currentRows = rows.map(row => sheet.getRange(row, 1, 1, HEADERS.length).getValues()[0]);
+    const assess1 = scoreOrExisting_(payload.assess1Score, latestScore_(currentRows, 4, 0, 100), 0, 100);
+    const assess2 = scoreOrExisting_(payload.assess2Score, latestScore_(currentRows, 5, 0, 100), 0, 100);
     const incomingHero = validScore_(payload.challengeScore, 0, 60000);
-    const existingHero = validScore_(current[6], 0, 60000);
+    const existingHero = highestScore_(currentRows, 6, 0, 60000);
     const heroBest = incomingHero === '' ? existingHero : Math.max(Number(existingHero || 0), Number(incomingHero));
     const values = [[new Date(), classCode, seatNumber, nameCode, assess1, assess2, heroBest]];
 
-    if (row) sheet.getRange(row, 1, 1, HEADERS.length).setValues(values);
+    if (rows.length) {
+      sheet.getRange(rows[0], 1, 1, HEADERS.length).setValues(values);
+      rows.slice(1).sort((a, b) => b - a).forEach(row => sheet.deleteRow(row));
+    }
     else sheet.appendRow(values[0]);
 
-    return json_({ok: true, updated: Boolean(row), challengeHighScore: heroBest});
+    return json_({ok: true, updated: rows.length > 0, duplicatesRemoved: Math.max(0, rows.length - 1), challengeHighScore: heroBest});
   } catch (error) {
     return json_({ok: false, error: String(error && error.message || error)});
   } finally {
@@ -48,12 +51,27 @@ function ensureHeaders_(sheet) {
   sheet.setFrozenRows(1);
 }
 
-function findStudentRow_(sheet, classCode, seatNumber, nameCode) {
+function findStudentRows_(sheet, classCode, seatNumber, nameCode) {
   const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return 0;
+  if (lastRow < 2) return [];
   const rows = sheet.getRange(2, 2, lastRow - 1, 3).getDisplayValues();
-  const index = rows.findIndex(row => row[0].trim() === classCode && row[1].trim() === seatNumber && row[2].trim() === nameCode);
-  return index < 0 ? 0 : index + 2;
+  return rows.reduce((matches, row, index) => {
+    if (row[0].trim() === classCode && row[1].trim() === seatNumber && row[2].trim() === nameCode) matches.push(index + 2);
+    return matches;
+  }, []);
+}
+
+function latestScore_(rows, columnIndex, min, max) {
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const score = validScore_(rows[index][columnIndex], min, max);
+    if (score !== '') return score;
+  }
+  return '';
+}
+
+function highestScore_(rows, columnIndex, min, max) {
+  const scores = rows.map(row => validScore_(row[columnIndex], min, max)).filter(score => score !== '');
+  return scores.length ? Math.max(...scores) : '';
 }
 
 function scoreOrExisting_(incoming, existing, min, max) {
