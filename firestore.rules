@@ -18,12 +18,28 @@ service cloud.firestore {
         && data.nameCode is string && data.nameCode.size() >= 1 && data.nameCode.size() <= 24
         && (!('assess1Score' in data) || validPercentScore(data.assess1Score))
         && (!('assess2Score' in data) || validPercentScore(data.assess2Score))
-        && (!('challengeScore' in data) || (data.challengeScore is int && data.challengeScore >= 0 && data.challengeScore <= 6))
+        && (!('challengeScore' in data) || (data.challengeScore is int && data.challengeScore >= 0 && data.challengeScore <= 60000))
         && data.updatedAt == request.time;
     }
 
     function validPercentScore(score) {
       return score is int && score >= 0 && score <= 100;
+    }
+
+    match /challenge_leaderboard/{recordId} {
+      allow read: if true;
+      allow create: if validLeaderboardRecord();
+      allow update: if validLeaderboardRecord() && request.resource.data.score > resource.data.score;
+      allow delete: if false;
+    }
+
+    function validLeaderboardRecord() {
+      let data = request.resource.data;
+      return data.keys().hasOnly(['classCode', 'seatNumber', 'score', 'updatedAt'])
+        && data.classCode is string && data.classCode.size() >= 1 && data.classCode.size() <= 24
+        && data.seatNumber is string && data.seatNumber.size() >= 1 && data.seatNumber.size() <= 12
+        && data.score is int && data.score >= 0 && data.score <= 60000
+        && data.updatedAt == request.time;
     }
   }
 }

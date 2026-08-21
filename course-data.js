@@ -8,11 +8,11 @@ window.CELL_COURSE = {
     {id:'animal',title:'動物細胞',url:'6_animal-cell.html'},
     {id:'plant',title:'植物細胞',url:'7_plant-cell.html'},
     {id:'compare',title:'動植物比較',url:'8_animal-plant-comparison.html'},
-    {id:'lab',title:'製片觀察',url:'10_slide-observation.html'},
+    {id:'lab',title:'玻片觀察',url:'10_slide-observation.html'},
     {id:'microscope',title:'顯微影像',url:'9_microscope-images.html'},
     {id:'assess2',title:'形成性評量（二）',url:'11_assessment-2-2.html'},
     {id:'reading',title:'閱讀素養',url:'12_reading-literacy.html'},
-    {id:'challenge',title:'綜合挑戰',url:'13_comprehensive-challenge.html'},
+    {id:'challenge',title:'細胞學習英雄榜',url:'13_comprehensive-challenge.html'},
     {id:'result',title:'學習結果',url:'14_learning-result.html'}
   ],
   modules: {
@@ -58,7 +58,7 @@ window.CELL_COURSE = {
       {type:'radio',prompt:'細胞壁的主要功能是？',options:[['support','保護並維持細胞形狀'],['control','控制遺傳'],['energy','產生能量']],correct:['support'],explanation:'細胞壁由纖維素構成，可保護與維持形狀。'},
       {type:'radio',prompt:'葉綠體能進行什麼作用？',options:[['photosynthesis','光合作用'],['digestion','消化作用'],['movement','肌肉收縮']],correct:['photosynthesis'],explanation:'葉綠體可進行光合作用並製造葡萄糖。'},
       {type:'radio',prompt:'所有植物細胞都有葉綠體嗎？',options:[['no','不一定'],['yes','一定都有']],correct:['no'],explanation:'教材使用「有些植物細胞」，例如洋蔥鱗葉表皮通常看不到葉綠體。'},
-      {type:'checkbox',prompt:'哪些構造可在典型植物細胞示意圖中看到？',options:[['wall','細胞壁'],['membrane','細胞膜'],['nucleus','細胞核'],['chloroplast','葉綠體']],correct:['wall','membrane','nucleus','chloroplast'],explanation:'典型植物細胞示意圖通常會標示這些構造，但真實細胞仍有差異。'}
+      {type:'checkbox',prompt:'哪些構造可在所有的植物細胞中看到？',options:[['wall','細胞壁'],['membrane','細胞膜'],['cytoplasm','細胞質'],['chloroplast','葉綠體']],correct:['wall','membrane','cytoplasm'],explanation:'植物細胞具有細胞壁、細胞膜與細胞質；葉綠體只存在於部分能行光合作用的植物細胞。'}
     ]},
     compare:{unit:'細胞的構造',title:'動植物細胞比較站',subtitle:'先找共同構造，再辨認植物細胞常見的附加構造。',tip:'動物細胞也可能有小液胞；植物細胞同時具有細胞膜與細胞壁。',sections:[{title:'共同與差異',html:'<div class="compare-board"><div><h3>動物細胞</h3><p>細胞核、細胞質、細胞膜、粒線體、小液胞</p></div><div><h3>共同構造</h3><p>細胞核、細胞質、細胞膜、粒線體、液胞</p></div><div><h3>植物細胞常見</h3><p>細胞壁、大液胞；有些具有葉綠體</p></div></div>'}],questions:[
       {type:'checkbox',prompt:'哪些是動、植物細胞的共同構造？',options:[['nucleus','細胞核'],['cytoplasm','細胞質'],['membrane','細胞膜'],['wall','細胞壁']],correct:['nucleus','cytoplasm','membrane'],explanation:'細胞壁不是動物細胞的構造。'},
@@ -110,4 +110,29 @@ window.CELL_COURSE = {
       {type:'radio',prompt:'哪一項最能代表本單元的核心概念？',options:[['core','細胞是生物體構造與功能的基本單位'],['same','所有細胞完全相同'],['plant','只有植物具有細胞']],correct:['core'],explanation:'細胞學說連結了生物體的構造與功能。'}
     ]}
   }
+};
+
+// 依目前課程版本覆寫需跨頁同步的名稱與題目。
+window.CELL_COURSE.modules.lab.title = '玻片觀察';
+window.CELL_COURSE.modules.lab.questions[5] = {
+  type:'checkbox',
+  prompt:'比較洋蔥表皮與口腔皮膜細胞的製片方法，哪些敘述正確？',
+  options:[['onionwater','洋蔥表皮放入載玻片中央的水滴中'],['oralstain','口腔皮膜細胞先滴亞甲藍液再取樣塗散'],['slowcover','兩種標本都應斜放蓋玻片並慢慢蓋下'],['oralpeel','口腔皮膜要用鑷子剝下一整片組織']],
+  correct:['onionwater','oralstain','slowcover'],
+  explanation:'洋蔥表皮是剝片標本，先滴水並攤平；口腔皮膜是塗片標本，先滴亞甲藍液再把細胞塗散。兩者都要慢慢蓋片以減少氣泡。'
+};
+Object.assign(window.CELL_COURSE.modules.challenge, {
+  unit:'細胞學習英雄榜',
+  title:'細胞學習英雄榜',
+  subtitle:'辨認由左向右移動的細胞與胞器，越快答對，分數越高。',
+  scoreMode:'game',
+  tip:'每個項目最高 5,000 分、最低 500 分；答錯扣 1,000 分並失去 1 次生命。',
+  sections:[{title:'遊戲規則',html:'<p>共有 12 種細胞或胞器，總分上限 60,000 分。圖片由左向右移動，請在抵達終點前從下方點選正確名稱。每位學生以班級與座號辨識，只保留最高分，排行榜顯示前 10 名。</p>'}]
+});
+window.CELL_COURSE.modules.challenge.questions[2] = {
+  type:'radio',
+  prompt:'哪一組構造同時存在於典型的動物細胞與植物細胞？',
+  options:[['common','細胞膜、細胞質與粒線體'],['plantonly','細胞壁、葉綠體與大液胞'],['wall','只有細胞壁']],
+  correct:['common'],
+  explanation:'典型動、植物細胞都具有細胞膜、細胞質與粒線體。'
 };

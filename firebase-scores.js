@@ -22,6 +22,7 @@
 
   if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
+  const safePart = value => String(value).trim().replace(/[^0-9A-Za-z_-]/g, '_').slice(0, 24);
 
   window.uploadCellScores = async function uploadCellScores(state) {
     const { classCode, seatNumber, nameCode } = state || {};
@@ -36,7 +37,6 @@
     if (Number.isInteger(state.challengeScore)) scores.challengeScore = state.challengeScore;
     if (!Object.keys(scores).length) return;
 
-    const safePart = value => String(value).trim().replace(/[^0-9A-Za-z_-]/g, '_').slice(0, 24);
     const recordId = [classCode, seatNumber, nameCode].map(safePart).join('__');
     setStatus('正在將分數上傳至 Firebase……');
     try {
@@ -52,5 +52,27 @@
       console.error('Firebase score upload failed:', error);
       setStatus('Firebase 暫時無法上傳；分數仍保存在這台裝置，稍後重新開啟結果頁會再嘗試。', 'error');
     }
+  };
+
+  window.uploadChallengeHighScore = async function uploadChallengeHighScore(state, score) {
+    const classCode = String(state?.classCode || '').trim();
+    const seatNumber = String(state?.seatNumber || '').trim();
+    if (!classCode || !seatNumber || !Number.isInteger(score)) throw new Error('排行榜資料不完整');
+    const ref = db.collection('challenge_leaderboard').doc([classCode, seatNumber].map(safePart).join('__'));
+    await db.runTransaction(async transaction => {
+      const snapshot = await transaction.get(ref);
+      const previous = snapshot.exists ? Number(snapshot.data().score || 0) : -1;
+      if (score > previous) transaction.set(ref, {
+        classCode,
+        seatNumber,
+        score,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+  };
+
+  window.loadChallengeLeaderboard = async function loadChallengeLeaderboard() {
+    const snapshot = await db.collection('challenge_leaderboard').orderBy('score', 'desc').limit(10).get();
+    return snapshot.docs.map(doc => doc.data());
   };
 })();
