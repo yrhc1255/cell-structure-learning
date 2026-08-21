@@ -7,6 +7,7 @@
     messagingSenderId: '196563863148',
     appId: '1:196563863148:web:16a9f31e6639cf9f5bfa49'
   };
+  const googleSheetsEndpoint = 'https://script.google.com/macros/s/AKfycbzaIx-4E7HdA1m_Cj4rBIyLdmNquYlNAUIkSzDpGhIcg7LAxDhMKbPFVeK7t83ZHP5E6A/exec';
 
   const setStatus = (message, type = '') => {
     const status = document.querySelector('#score-sync-status');
@@ -23,6 +24,22 @@
   if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
   const safePart = value => String(value).trim().replace(/[^0-9A-Za-z_-]/g, '_').slice(0, 24);
+
+  async function syncGoogleSheet(state) {
+    await fetch(googleSheetsEndpoint, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify({
+        classCode: String(state.classCode).trim(),
+        seatNumber: String(state.seatNumber).trim(),
+        nameCode: String(state.nameCode).trim(),
+        assess1Score: Number.isInteger(state.assess1Score) ? state.assess1Score : null,
+        assess2Score: Number.isInteger(state.assess2Score) ? state.assess2Score : null,
+        challengeScore: Number.isInteger(state.challengeScore) ? state.challengeScore : null
+      })
+    });
+  }
 
   window.uploadCellScores = async function uploadCellScores(state) {
     const { classCode, seatNumber, nameCode } = state || {};
@@ -47,10 +64,11 @@
         ...scores,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
-      setStatus('三項已完成的分數已同步至 Firebase。', 'success');
+      await syncGoogleSheet(state);
+      setStatus('成績已同步至 Firebase 與教師總表。', 'success');
     } catch (error) {
       console.error('Firebase score upload failed:', error);
-      setStatus('Firebase 暫時無法上傳；分數仍保存在這台裝置，稍後重新開啟結果頁會再嘗試。', 'error');
+      setStatus('成績同步暫時未完成；分數仍保存在這台裝置，稍後重新開啟結果頁會再嘗試。', 'error');
     }
   };
 

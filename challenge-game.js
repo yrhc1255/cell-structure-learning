@@ -14,10 +14,10 @@
   try { state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { state = {}; }
 
   const items = [
-    {answer:'細胞膜',description:'區隔細胞內外，並控制物質進出。',image:ANIMAL_CELL,focus:'membrane'},
-    {answer:'細胞質',description:'許多代謝反應進行的場所，也是胞器活動的環境。',image:ANIMAL_CELL,focus:'cytoplasm'},
+    {answer:'細胞膜',description:'區隔細胞內外，並控制物質進出。',image:ANIMAL_CELL},
+    {answer:'細胞質',description:'許多代謝反應進行的場所，也是胞器活動的環境。',image:ANIMAL_CELL},
     {answer:'細胞核',description:'含有遺傳物質，並調控細胞的生命活動。',crop:PLANT_CELL,cropClass:'nucleus'},
-    {answer:'細胞壁',description:'位於植物細胞最外層，提供保護、支撐並維持形狀。',image:PLANT_CELL,focus:'wall'},
+    {answer:'細胞壁',description:'位於植物細胞最外層，提供保護、支撐並維持形狀。',image:PLANT_CELL},
     {answer:'葉綠體',description:'含葉綠素，可吸收光能進行光合作用。',crop:PLANT_CELL,cropClass:'chloroplast'},
     {answer:'粒線體',description:'進行呼吸作用，將養分中的能量轉換成細胞可利用的形式。',crop:PLANT_CELL,cropClass:'mitochondria'},
     {answer:'液泡',description:'可儲存水、養分、色素或廢物；植物細胞中的通常較大。',crop:PLANT_CELL,cropClass:'vacuole'},
@@ -88,7 +88,8 @@
   function visualMarkup(item) {
     if (item.sheet) return `<div class="cell-sheet-crop" style="background-image:url('${item.sheet}');background-position:${item.position}"></div>`;
     if (item.crop) return `<div class="organelle-crop crop-${item.cropClass}" style="background-image:url('${item.crop}')" role="img" aria-label="${escapeText(item.description)}"></div>`;
-    return `<div class="organelle-visual"><img src="${item.image}" alt=""><span class="organelle-focus focus-${item.focus}"></span></div>`;
+    const focus = item.focus ? `<span class="organelle-focus focus-${item.focus}"></span>` : '';
+    return `<div class="organelle-visual"><img src="${item.image}" alt="">${focus}</div>`;
   }
 
   function spawn() {
