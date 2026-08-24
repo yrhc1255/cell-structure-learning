@@ -12,6 +12,8 @@
       ".firebase/**",
       ".corepack/**",
       ".npm-cache/**",
+      "google-apps-script/**",
+      "firestore.rules",
       "README.md"
     ],
     "redirects": [
