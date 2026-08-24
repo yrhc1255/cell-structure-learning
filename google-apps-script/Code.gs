@@ -34,6 +34,7 @@ function doPost(e) {
       rows.slice(1).sort((a, b) => b - a).forEach(row => sheet.deleteRow(row));
     }
     else sheet.appendRow(values[0]);
+    SpreadsheetApp.flush();
 
     return json_({ok: true, updated: rows.length > 0, duplicatesRemoved: Math.max(0, rows.length - 1), challengeHighScore: heroBest});
   } catch (error) {
@@ -54,11 +55,28 @@ function ensureHeaders_(sheet) {
 function findStudentRows_(sheet, classCode, seatNumber) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
-  const rows = sheet.getRange(2, 2, lastRow - 1, 3).getDisplayValues();
+  const targetKey = studentKey_(classCode, seatNumber);
+  const rows = sheet.getRange(2, 2, lastRow - 1, 2).getValues();
   return rows.reduce((matches, row, index) => {
-    if (row[0].trim() === classCode && row[1].trim() === seatNumber) matches.push(index + 2);
+    if (studentKey_(row[0], row[1]) === targetKey) matches.push(index + 2);
     return matches;
   }, []);
+}
+
+function studentKey_(classCode, seatNumber) {
+  return `${normalizeKeyPart_(classCode)}::${normalizeSeat_(seatNumber)}`;
+}
+
+function normalizeKeyPart_(value) {
+  return String(value == null ? '' : value)
+    .normalize('NFKC')
+    .replace(/[\s\u200b-\u200d\ufeff]/gi, '')
+    .toLowerCase();
+}
+
+function normalizeSeat_(value) {
+  const normalized = normalizeKeyPart_(value);
+  return /^\d+$/.test(normalized) ? String(Number(normalized)) : normalized;
 }
 
 function latestScore_(rows, columnIndex, min, max) {
