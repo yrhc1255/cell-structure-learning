@@ -9,6 +9,11 @@
   };
   const googleSheetsEndpoint = 'https://script.google.com/macros/s/AKfycbzaIx-4E7HdA1m_Cj4rBIyLdmNquYlNAUIkSzDpGhIcg7LAxDhMKbPFVeK7t83ZHP5E6A/exec';
 
+  const withTimeout = (promise, milliseconds, label) => Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label}逾時`)), milliseconds))
+  ]);
+
   const setStatus = (message, type = '') => {
     const status = document.querySelector('#score-sync-status');
     if (!status) return;
@@ -16,17 +21,19 @@
     status.className = `score-sync-status ${type}`.trim();
   };
 
-  if (!window.firebase) {
-    window.uploadCellScores = async () => setStatus('Firebase 程式未載入，分數暫存在本機。', 'error');
-    return;
-  }
+  const setDestinationStatus = (firebaseMessage, sheetMessage, type = '') => {
+    setStatus(`Firebase：${firebaseMessage}｜教師總表：${sheetMessage}`, type);
+  };
 
-  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
+  let db = null;
+  if (window.firebase) {
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+  }
   const safePart = value => String(value).trim().replace(/[^0-9A-Za-z_-]/g, '_').slice(0, 24);
 
   async function syncGoogleSheet(state) {
-    await fetch(googleSheetsEndpoint, {
+    await withTimeout(fetch(googleSheetsEndpoint, {
       method: 'POST',
       mode: 'no-cors',
       headers: {'Content-Type': 'text/plain;charset=utf-8'},
@@ -38,7 +45,18 @@
         assess2Score: Number.isInteger(state.assess2Score) ? state.assess2Score : null,
         challengeScore: Number.isInteger(state.challengeScore) ? state.challengeScore : null
       })
-    });
+    }), 10000, '教師總表傳送');
+  }
+
+  async function syncFirebaseScores(state, recordId, scores) {
+    if (!db) throw new Error('Firebase 程式未載入');
+    await withTimeout(db.collection('cell_scores').doc(recordId).set({
+      classCode: String(state.classCode).trim(),
+      seatNumber: String(state.seatNumber).trim(),
+      nameCode: String(state.nameCode).trim(),
+      ...scores,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true }), 12000, 'Firebase 上傳');
   }
 
   window.uploadCellScores = async function uploadCellScores(state) {
@@ -54,25 +72,27 @@
     if (Number.isInteger(state.challengeScore)) scores.challengeScore = state.challengeScore;
     if (!Object.keys(scores).length) return;
 
-    const recordId = [classCode, seatNumber, nameCode].map(safePart).join('__');
-    setStatus('正在將分數上傳至 Firebase……');
-    try {
-      await db.collection('cell_scores').doc(recordId).set({
-        classCode: String(classCode).trim(),
-        seatNumber: String(seatNumber).trim(),
-        nameCode: String(nameCode).trim(),
-        ...scores,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, { merge: true });
-      await syncGoogleSheet(state);
-      setStatus('成績已同步至 Firebase 與教師總表。', 'success');
-    } catch (error) {
-      console.error('Firebase score upload failed:', error);
-      setStatus('成績同步暫時未完成；分數仍保存在這台裝置，稍後重新開啟結果頁會再嘗試。', 'error');
-    }
+    const recordId = [classCode, seatNumber].map(safePart).join('__');
+    setDestinationStatus('上傳中……', '傳送中……');
+    const [firebaseResult, sheetResult] = await Promise.allSettled([
+      syncFirebaseScores(state, recordId, scores),
+      syncGoogleSheet(state)
+    ]);
+    if (firebaseResult.status === 'rejected') console.error('Firebase score upload failed:', firebaseResult.reason);
+    if (sheetResult.status === 'rejected') console.error('Google Sheets sync failed:', sheetResult.reason);
+
+    const firebaseMessage = firebaseResult.status === 'fulfilled' ? '已完成' : '失敗，稍後可重試';
+    const sheetMessage = sheetResult.status === 'fulfilled' ? '已送出' : '失敗，稍後可重試';
+    const allSucceeded = firebaseResult.status === 'fulfilled' && sheetResult.status === 'fulfilled';
+    setDestinationStatus(firebaseMessage, sheetMessage, allSucceeded ? 'success' : 'error');
+    return {
+      firebase: firebaseResult.status === 'fulfilled' ? 'success' : 'failed',
+      googleSheets: sheetResult.status === 'fulfilled' ? 'sent' : 'failed'
+    };
   };
 
   window.uploadChallengeHighScore = async function uploadChallengeHighScore(state, score) {
+    if (!db) throw new Error('Firebase 程式未載入');
     const classCode = String(state?.classCode || '').trim();
     const seatNumber = String(state?.seatNumber || '').trim();
     if (!classCode || !seatNumber || !Number.isInteger(score)) throw new Error('排行榜資料不完整');
@@ -90,6 +110,7 @@
   };
 
   window.loadChallengeLeaderboard = async function loadChallengeLeaderboard() {
+    if (!db) throw new Error('Firebase 程式未載入');
     const snapshot = await db.collection('challenge_leaderboard').orderBy('score', 'desc').limit(10).get();
     return snapshot.docs.map(doc => doc.data());
   };

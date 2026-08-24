@@ -20,7 +20,7 @@ function doPost(e) {
     if (!sheet) return json_({ok: false, error: '找不到成績總表'});
 
     ensureHeaders_(sheet);
-    const rows = findStudentRows_(sheet, classCode, seatNumber, nameCode);
+    const rows = findStudentRows_(sheet, classCode, seatNumber);
     const currentRows = rows.map(row => sheet.getRange(row, 1, 1, HEADERS.length).getValues()[0]);
     const assess1 = scoreOrExisting_(payload.assess1Score, latestScore_(currentRows, 4, 0, 100), 0, 100);
     const assess2 = scoreOrExisting_(payload.assess2Score, latestScore_(currentRows, 5, 0, 100), 0, 100);
@@ -51,12 +51,12 @@ function ensureHeaders_(sheet) {
   sheet.setFrozenRows(1);
 }
 
-function findStudentRows_(sheet, classCode, seatNumber, nameCode) {
+function findStudentRows_(sheet, classCode, seatNumber) {
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
   const rows = sheet.getRange(2, 2, lastRow - 1, 3).getDisplayValues();
   return rows.reduce((matches, row, index) => {
-    if (row[0].trim() === classCode && row[1].trim() === seatNumber && row[2].trim() === nameCode) matches.push(index + 2);
+    if (row[0].trim() === classCode && row[1].trim() === seatNumber) matches.push(index + 2);
     return matches;
   }, []);
 }

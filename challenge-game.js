@@ -161,12 +161,16 @@
     result.hidden = false;
     result.innerHTML = `<p class="eyebrow">${completedAll ? '挑戰完成' : '生命用完了'}</p><h2>本次得分：${score.toLocaleString('zh-TW')} 分</h2><p>你的最高分是 ${best.toLocaleString('zh-TW')} 分。Firebase 成績與英雄榜都只保留最高分。</p><p id="score-sync-status" class="score-sync-status">正在上傳成績……</p><div class="game-result-actions"><button type="button" class="secondary-button" id="game-retry">再玩一次</button><a class="primary-button" href="14_learning-result.html">查看學習結果 →</a></div>`;
     document.querySelector('#game-retry').addEventListener('click', startGame);
-    try {
-      await Promise.all([window.uploadCellScores?.(state),window.uploadChallengeHighScore?.(state,score)]);
-      await loadLeaderboard();
-    } catch (error) {
-      console.error(error);
-      document.querySelector('#score-sync-status').textContent = '成績已保存在本機，但 Firebase 暫時無法上傳，請稍後再試。';
+    const [scoreUpload, leaderboardUpload] = await Promise.allSettled([
+      window.uploadCellScores?.(state),
+      window.uploadChallengeHighScore?.(state,score)
+    ]);
+    if (leaderboardUpload.status === 'fulfilled') await loadLeaderboard();
+    else console.error('Leaderboard upload failed:', leaderboardUpload.reason);
+    if (scoreUpload.status === 'rejected' || leaderboardUpload.status === 'rejected') {
+      const currentStatus = document.querySelector('#score-sync-status').textContent;
+      document.querySelector('#score-sync-status').textContent = `${currentStatus}｜英雄榜：${leaderboardUpload.status === 'fulfilled' ? '已完成' : '失敗，稍後可重試'}`;
+      document.querySelector('#score-sync-status').classList.add('error');
     }
   }
 
