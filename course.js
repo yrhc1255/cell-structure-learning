@@ -105,7 +105,7 @@ if(moduleRoot){
     }
     function update(){
       const count=module.assessment?answered.size:correct.size;
-      const complete=count===module.questions.length; next.classList.toggle('disabled-link',!complete); next.setAttribute('aria-disabled',String(!complete));
+      const complete=teacherMode||count===module.questions.length; next.classList.toggle('disabled-link',!complete); next.setAttribute('aria-disabled',String(!complete));
       if(module.assessment){
         const score=module.scoreMode==='count'?correct.size:Math.round(correct.size/module.questions.length*100);
         document.querySelector('#assessment-score-value').textContent=`${score} 分`;

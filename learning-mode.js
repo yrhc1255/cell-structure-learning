@@ -43,6 +43,9 @@
     if (button) button.innerHTML = isTeacher() ? '🔓 教師模式' : '🔒 教師模式';
     renderScore();
     unlockNavigation();
+    // Other page scripts rebuild the progress bar during DOMContentLoaded.
+    // Reapply teacher links after those synchronous initializers have finished.
+    if (isTeacher()) setTimeout(unlockNavigation, 0);
   }
   function enableDragScroll(nav) {
     let dragging = false;
