@@ -44,12 +44,60 @@
     renderScore();
     unlockNavigation();
   }
+  function enableDragScroll(nav) {
+    let dragging = false;
+    let moved = false;
+    let startX = 0;
+    let startScroll = 0;
+    nav.addEventListener('pointerdown', event => {
+      if (event.pointerType && event.pointerType !== 'mouse') return;
+      dragging = true;
+      moved = false;
+      startX = event.clientX;
+      startScroll = nav.scrollLeft;
+      nav.classList.add('dragging');
+      nav.setPointerCapture?.(event.pointerId);
+    });
+    nav.addEventListener('pointermove', event => {
+      if (!dragging) return;
+      const distance = event.clientX - startX;
+      if (Math.abs(distance) > 5) moved = true;
+      nav.scrollLeft = startScroll - distance;
+    });
+    const stop = event => {
+      if (!dragging) return;
+      dragging = false;
+      nav.classList.remove('dragging');
+      nav.releasePointerCapture?.(event.pointerId);
+    };
+    nav.addEventListener('pointerup', stop);
+    nav.addEventListener('pointercancel', stop);
+    nav.addEventListener('click', event => {
+      if (moved) {
+        event.preventDefault();
+        event.stopPropagation();
+        moved = false;
+      }
+    }, true);
+  }
+  function buildCompactHeader(controls) {
+    const nav = document.querySelector('.course-progress');
+    if (!nav) return;
+    const oldHeader = document.querySelector('.site-header');
+    controls.className = 'compact-course-header';
+    controls.innerHTML = '<div class="compact-course-identity"><a class="compact-brand" href="1_home.html">⌕ 微觀細胞研究所</a><button type="button" id="teacher-mode-button" class="teacher-mode-button">🔒 教師模式</button></div><div class="compact-stage-scroll"></div><strong id="learning-score-total" class="learning-score-total"></strong>';
+    document.body.insertBefore(controls, document.body.firstChild);
+    nav.classList.add('compact-course-progress');
+    controls.querySelector('.compact-stage-scroll').appendChild(nav);
+    oldHeader?.remove();
+    document.body.classList.add('compact-header-ready');
+    enableDragScroll(nav);
+    nav.querySelector('.current')?.scrollIntoView({behavior:'instant', block:'nearest', inline:'center'});
+  }
   function addControls() {
     if (document.querySelector('#teacher-mode-button')) return;
     const controls = document.createElement('div');
-    controls.className = 'learning-controls';
-    controls.innerHTML = '<button type="button" id="teacher-mode-button" class="teacher-mode-button">🔒 教師模式</button><strong id="learning-score-total" class="learning-score-total"></strong>';
-    document.body.appendChild(controls);
+    buildCompactHeader(controls);
     const dialog = document.createElement('dialog');
     dialog.className = 'teacher-dialog';
     dialog.innerHTML = '<form method="dialog"><h2>教師模式</h2><p>輸入教師密碼後，可開啟所有課程頁面。教師操作不計分，也不會上傳成績。</p><label>教師密碼<input id="teacher-password" type="password" inputmode="numeric" autocomplete="off" required></label><p id="teacher-password-message" class="form-message" aria-live="polite"></p><div><button type="button" class="secondary-button" id="teacher-cancel">取消</button><button type="submit" class="primary-button">解鎖所有頁面</button></div></form>';
