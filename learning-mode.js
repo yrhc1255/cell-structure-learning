@@ -26,10 +26,14 @@
     if (!score) return;
     score.textContent = isTeacher() ? '教師模式｜不計分' : `學習總分 ${learningScore()}／${MAX_LEARNING_SCORE}`;
   }
+  function teacherNavigationReady(nav) {
+    return nav.querySelectorAll('a.course-step[href]').length === pageOrder.length;
+  }
   function unlockNavigation() {
     if (!isTeacher()) return;
     const nav = document.querySelector('.course-progress');
     if (!nav) return;
+    if (teacherNavigationReady(nav)) return;
     const currentFile = location.pathname.split('/').pop() || '1_home.html';
     nav.innerHTML = pageOrder.map(([id, title, url], index) => {
       const current = url === currentFile;
@@ -95,6 +99,9 @@
     oldHeader?.remove();
     document.body.classList.add('compact-header-ready');
     enableDragScroll(nav);
+    new MutationObserver(() => {
+      if (isTeacher() && !teacherNavigationReady(nav)) queueMicrotask(unlockNavigation);
+    }).observe(nav, {childList: true});
     nav.querySelector('.current')?.scrollIntoView({behavior:'instant', block:'nearest', inline:'center'});
   }
   function addControls() {
