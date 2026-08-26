@@ -34,11 +34,13 @@ function completedSet(state=courseState()) {
   return ids;
 }
 function isUnlocked(id,state=courseState()) {
+  if (window.CellLearningMode?.isTeacher()) return true;
   const index = course.order.findIndex(item=>item.id===id);
   if (index <= 0) return true;
   return completedSet(state).has(course.order[index-1].id);
 }
 function markModuleComplete(id,extra={}) {
+  if (window.CellLearningMode?.isTeacher()) return courseState();
   const state=courseState(); const done=new Set(state.completedModules||[]); done.add(id);
   return saveCourseState({...extra,completedModules:[...done],currentPage:id});
 }
@@ -69,7 +71,7 @@ function questionMarkup(question,index){
     return `<label class="answer-option"><input type="${type}" name="question-${index}" value="${escapeText(value)}"><span>${escapeText(label)}</span></label>`;
   }).join('');
   const controls=question.type==='select'?`<label class="select-label">選擇答案<select name="question-${index}">${options}</select></label>`:options;
-  return `<section class="question-card module-question" data-question-index="${index}"><div class="question-meta"><span>第 ${index+1} 題／<b class="question-total"></b></span><span>${question.type==='checkbox'?'複選題':question.type==='select'?'下拉選擇':'單選題'}</span></div><h2>${escapeText(question.prompt)}</h2><form>${controls}<button class="primary-button check-question" type="submit" disabled>檢查答案</button></form><div class="feedback" aria-live="polite" hidden></div></section>`;
+  return `<section class="question-card module-question" data-question-index="${index}"><div class="question-meta"><span>第 ${index+1} 題／<b class="question-total"></b></span><span>${question.type==='checkbox'?'複選題':question.type==='select'?'下拉選擇':'單選題'}</span></div><h2>${escapeText(question.prompt)}</h2><form>${controls}<button class="primary-button check-question" type="submit" disabled>檢查答案</button></form><div class="feedback" aria-live="polite" hidden></div>${question.assessment?'':'<p class="question-points" aria-live="polite"></p>'}</section>`;
 }
 
 const moduleRoot=document.querySelector('#module-content');
@@ -78,7 +80,7 @@ if(moduleRoot){
   if(!module){ location.replace('1_home.html'); }
   else if(!isUnlocked(pageId)){ location.replace(course.order[Math.max(0,index-1)].url); }
   else {
-    if(isPageReload()) clearModuleAttempt(pageId);
+    if(isPageReload()&&!window.CellLearningMode?.isTeacher()) clearModuleAttempt(pageId);
     document.title=`${module.title}｜微觀細胞研究所`; document.querySelector('#module-unit').textContent=module.unit;
     const state=courseState(); const percent=Math.round(index/(course.order.length-1)*100);
     document.querySelector('#module-progress-label').textContent=`進度 ${percent}％`; document.querySelector('#module-progress').style.width=`${percent}%`;
@@ -86,7 +88,21 @@ if(moduleRoot){
     document.querySelector('#module-stepper .current')?.scrollIntoView({behavior:'instant',block:'nearest',inline:'center'});
     moduleRoot.innerHTML=`<section class="content-card lesson-heading"><p class="eyebrow">${escapeText(module.unit)}</p><h1>${escapeText(module.title)}</h1><p class="lead">${escapeText(module.subtitle)}</p></section>${module.sections.map(s=>`<section class="content-card module-section"><h2>${escapeText(s.title)}</h2>${s.html}</section>`).join('')}<section class="practice-heading"><p class="eyebrow">互動任務</p><h2>${module.assessment?'完成所有題目並立即查看本次分數':'全部答對，才能完成本頁'}</h2></section>${module.assessment?'<section class="assessment-score" id="assessment-score" aria-live="polite"><span>目前分數</span><strong id="assessment-score-value">0 分</strong><p id="assessment-score-detail">已完成 0／'+module.questions.length+' 題</p><p class="score-sync-status" id="score-sync-status" aria-live="polite"></p></section>':''}${module.questions.map(questionMarkup).join('')}<nav class="page-navigation"><a class="secondary-button" href="${course.order[index-1].url}">← 上一頁</a><a class="primary-button disabled-link" id="module-next" aria-disabled="true" href="${course.order[index+1].url}">下一頁 →</a></nav>`;
     document.querySelectorAll('.question-total').forEach(x=>x.textContent=module.questions.length);
-    let current=courseState(); let correct=new Set(current[`${pageId}Correct`]||[]); let answered=new Set(current[`${pageId}Answered`]||[]); const next=document.querySelector('#module-next'); let scoreUploadStarted=false;
+    let current=courseState(); const teacherMode=window.CellLearningMode?.isTeacher()===true; let correct=new Set(teacherMode?[]:(current[`${pageId}Correct`]||[])); let answered=new Set(teacherMode?[]:(current[`${pageId}Answered`]||[])); const next=document.querySelector('#module-next'); let scoreUploadStarted=false;
+    const attempts={...(current.learningAttempts?.[pageId]||{})};
+    const earnedPoints={...(current.learningPoints?.[pageId]||{})};
+    function saveLearningProgress(qIndex,wasCorrect){
+      if(module.assessment||teacherMode) return 0;
+      attempts[qIndex]=Number(attempts[qIndex]||0)+1;
+      if(wasCorrect&&!Number.isInteger(earnedPoints[qIndex])) earnedPoints[qIndex]=Math.max(1,4-attempts[qIndex]);
+      const latest=courseState();
+      const learningAttempts={...(latest.learningAttempts||{}),[pageId]:attempts};
+      const learningPoints={...(latest.learningPoints||{}),[pageId]:earnedPoints};
+      const learningScore=Object.values(learningPoints).reduce((total,page)=>total+Object.values(page||{}).reduce((sum,value)=>sum+Number(value||0),0),0);
+      saveCourseState({learningAttempts,learningPoints,learningScore});
+      window.dispatchEvent(new Event('learning-score-changed'));
+      return Number(earnedPoints[qIndex]||0);
+    }
     function update(){
       const count=module.assessment?answered.size:correct.size;
       const complete=count===module.questions.length; next.classList.toggle('disabled-link',!complete); next.setAttribute('aria-disabled',String(!complete));
@@ -96,18 +112,20 @@ if(moduleRoot){
         document.querySelector('#assessment-score-detail').textContent=complete?`本次成績已保存：答對 ${correct.size}／${module.questions.length} 題。`:`已完成 ${answered.size}／${module.questions.length} 題，答對 ${correct.size} 題。`;
         document.querySelector('#assessment-score').classList.toggle('score-complete',complete);
       }
-      if(complete&&!scoreUploadStarted){ scoreUploadStarted=true; next.classList.add('disabled-link'); next.setAttribute('aria-disabled','true'); const score=module.scoreMode==='count'?correct.size:Math.round(correct.size/module.questions.length*100); const extra={}; extra[`${pageId}Score`]=score; const latest=markModuleComplete(pageId,extra); Promise.resolve(window.uploadCellScores?.(latest)).finally(()=>{next.classList.remove('disabled-link');next.setAttribute('aria-disabled','false');}); }
+      if(complete&&!scoreUploadStarted&&!teacherMode){ scoreUploadStarted=true; next.classList.add('disabled-link'); next.setAttribute('aria-disabled','true'); const score=module.scoreMode==='count'?correct.size:Math.round(correct.size/module.questions.length*100); const extra={}; extra[`${pageId}Score`]=score; const latest=markModuleComplete(pageId,extra); Promise.resolve(window.uploadCellScores?.(latest)).finally(()=>{next.classList.remove('disabled-link');next.setAttribute('aria-disabled','false');}); }
     }
     function values(form){const vals=[...form.querySelectorAll('input:checked')].map(x=>x.value);const select=form.querySelector('select');if(select?.value)vals.push(select.value);return vals.sort();}
     document.querySelectorAll('.module-question').forEach((card,qIndex)=>{
-      const q=module.questions[qIndex],form=card.querySelector('form'),button=card.querySelector('.check-question'),feedback=card.querySelector('.feedback');
+      const q=module.questions[qIndex],form=card.querySelector('form'),button=card.querySelector('.check-question'),feedback=card.querySelector('.feedback'),pointsLabel=card.querySelector('.question-points');
       const already=module.assessment?answered.has(qIndex):correct.has(qIndex);
+      if(pointsLabel&&!module.assessment) pointsLabel.textContent=teacherMode?'教師操作不計分':Number.isInteger(earnedPoints[qIndex])?`本題已獲得 ＋${earnedPoints[qIndex]} 分`:'尚未得分';
       if(already){q.correct.forEach(v=>{const c=form.querySelector(`[value="${v}"]`);if(c?.tagName==='OPTION')c.parentElement.value=v;else if(c)c.checked=true;c?.closest('.answer-option')?.classList.add('correct')});form.querySelectorAll('input,select').forEach(c=>c.disabled=true);feedback.hidden=false;feedback.className=`feedback ${correct.has(qIndex)?'correct':'incorrect'}`;feedback.innerHTML=`<h3>${correct.has(qIndex)?'已答對':'已完成作答'}</h3><p>${escapeText(q.explanation)}</p>`;}
       form.addEventListener('change',()=>button.disabled=values(form).length===0);
       form.addEventListener('submit',event=>{event.preventDefault();const chosen=values(form),right=[...q.correct].sort(),ok=JSON.stringify(chosen)===JSON.stringify(right);form.querySelectorAll('input,select').forEach(c=>c.disabled=true);button.disabled=true;feedback.hidden=false;
-        if(ok){correct.add(qIndex);answered.add(qIndex);form.querySelectorAll('input:checked').forEach(c=>c.closest('.answer-option')?.classList.add('correct'));feedback.className='feedback correct';feedback.innerHTML=`<h3>答對了</h3><p>${escapeText(q.explanation)}</p>`;}
-        else{answered.add(qIndex);form.querySelectorAll('input:checked').forEach(c=>c.closest('.answer-option')?.classList.add('incorrect'));feedback.className='feedback incorrect';feedback.innerHTML=`<h3>${module.assessment?'已記錄本題':'再找一次證據'}</h3><p>${escapeText(q.explanation)}</p>${module.assessment?'':'<button type="button" class="retry-button">重新作答</button>'}`;if(!module.assessment)feedback.querySelector('.retry-button').addEventListener('click',()=>{form.reset();form.querySelectorAll('input,select').forEach(c=>c.disabled=false);form.querySelectorAll('.answer-option').forEach(x=>x.classList.remove('incorrect','correct'));feedback.hidden=true;button.disabled=true;});}
-        const patch={};patch[`${pageId}Correct`]=[...correct];patch[`${pageId}Answered`]=[...answered];saveCourseState(patch);update();
+        const points=saveLearningProgress(qIndex,ok);
+        if(ok){correct.add(qIndex);answered.add(qIndex);form.querySelectorAll('input:checked').forEach(c=>c.closest('.answer-option')?.classList.add('correct'));feedback.className='feedback correct';feedback.innerHTML=`<h3>答對了</h3><p>${escapeText(q.explanation)}</p>`;if(pointsLabel&&!module.assessment)pointsLabel.textContent=teacherMode?'教師操作不計分':`本題獲得 ＋${points} 分`;}
+        else{answered.add(qIndex);form.querySelectorAll('input:checked').forEach(c=>c.closest('.answer-option')?.classList.add('incorrect'));feedback.className='feedback incorrect';feedback.innerHTML=`<h3>${module.assessment?'已記錄本題':'再找一次證據'}</h3><p>${escapeText(q.explanation)}</p>${module.assessment?'':'<button type="button" class="retry-button">重新作答</button>'}`;if(pointsLabel&&!module.assessment)pointsLabel.textContent=teacherMode?'教師操作不計分':`第 ${attempts[qIndex]} 次作答，答對可得 ${Math.max(1,3-attempts[qIndex])} 分`;if(!module.assessment)feedback.querySelector('.retry-button').addEventListener('click',()=>{form.reset();form.querySelectorAll('input,select').forEach(c=>c.disabled=false);form.querySelectorAll('.answer-option').forEach(x=>x.classList.remove('incorrect','correct'));feedback.hidden=true;button.disabled=true;});}
+        if(!teacherMode){const patch={};patch[`${pageId}Correct`]=[...correct];patch[`${pageId}Answered`]=[...answered];saveCourseState(patch);}update();
       });
     });
     update();
@@ -132,5 +150,5 @@ const resultRoot=document.querySelector('#result-summary');
 if(resultRoot){
   const state=courseState(); const retryMode=new URLSearchParams(location.search).get('retry')==='1'; const hasIdentity=Boolean(state.classCode&&state.seatNumber&&state.nameCode); const hasSavedScore=[state.assess1Score,state.assess2Score,state.challengeScore].some(Number.isInteger);
   if(!isUnlocked('result')&&!(retryMode&&hasIdentity&&hasSavedScore)) location.replace('13_comprehensive-challenge.html');
-  else { markModuleComplete('result'); resultRoot.innerHTML=`<article class="content-card"><h2>形成性評量（一）</h2><strong class="score-value">${state.assess1Score ?? '—'} 分</strong><p>百分制，完成後自動上傳。</p></article><article class="content-card"><h2>形成性評量（二）</h2><strong class="score-value">${state.assess2Score ?? '—'} 分</strong><p>百分制，完成後自動上傳。</p></article><article class="content-card"><h2>細胞學習英雄榜</h2><strong class="score-value">${state.challengeScore ?? '—'} 分</strong><p>12 個項目，最高 60,000 分；Firebase 與英雄榜只保留最高分。</p></article><p class="score-sync-status" id="score-sync-status" aria-live="polite">正在分別確認 Firebase 與教師總表……</p>`; (async()=>{const uploads=[window.uploadCellScores?.(state)];if(Number.isInteger(state.challengeScore))uploads.push(window.uploadChallengeHighScore?.(state,state.challengeScore));const results=await Promise.allSettled(uploads);if(results[1]?.status==='rejected'){const status=document.querySelector('#score-sync-status');status.textContent=`${status.textContent}｜英雄榜：失敗，稍後可重試`;status.classList.add('error');}})(); }
+  else { markModuleComplete('result'); resultRoot.innerHTML=`<article class="content-card"><h2>形成性評量（一）</h2><strong class="score-value">${state.assess1Score ?? '—'} 分</strong><p>百分制，完成後自動上傳。</p></article><article class="content-card"><h2>形成性評量（二）</h2><strong class="score-value">${state.assess2Score ?? '—'} 分</strong><p>百分制，完成後自動上傳。</p></article><article class="content-card"><h2>細胞學習英雄榜</h2><strong class="score-value">${state.challengeScore ?? '—'} 分</strong><p>12 個項目，最高 60,000 分；Firebase 與英雄榜只保留最高分。</p></article><article class="content-card"><h2>學習總分</h2><strong class="score-value">${window.CellLearningMode?.learningScore(state) ?? state.learningScore ?? 0}／126 分</strong><p>一般學習頁面依答對所需次數累計，形成性評量與遊戲不計入。</p></article><p class="score-sync-status" id="score-sync-status" aria-live="polite">${window.CellLearningMode?.isTeacher()?'教師模式不會上傳成績。':'正在分別確認 Firebase 與教師總表……'}</p>`; if(!window.CellLearningMode?.isTeacher()) (async()=>{const latest=courseState();const uploads=[window.uploadCellScores?.(latest)];if(Number.isInteger(latest.challengeScore))uploads.push(window.uploadChallengeHighScore?.(latest,latest.challengeScore));const results=await Promise.allSettled(uploads);if(results[1]?.status==='rejected'){const status=document.querySelector('#score-sync-status');status.textContent=`${status.textContent}｜英雄榜：失敗，稍後可重試`;status.classList.add('error');}})(); }
 }

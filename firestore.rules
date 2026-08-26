@@ -11,7 +11,7 @@ service cloud.firestore {
       let data = request.resource.data;
       return data.keys().hasOnly([
           'classCode', 'seatNumber', 'nameCode',
-          'assess1Score', 'assess2Score', 'challengeScore', 'updatedAt'
+          'assess1Score', 'assess2Score', 'challengeScore', 'learningScore', 'updatedAt'
         ])
         && data.classCode is string && data.classCode.size() >= 1 && data.classCode.size() <= 24
         && data.seatNumber is string && data.seatNumber.size() >= 1 && data.seatNumber.size() <= 12
@@ -19,6 +19,7 @@ service cloud.firestore {
         && (!('assess1Score' in data) || validPercentScore(data.assess1Score))
         && (!('assess2Score' in data) || validPercentScore(data.assess2Score))
         && (!('challengeScore' in data) || (data.challengeScore is int && data.challengeScore >= 0 && data.challengeScore <= 60000))
+        && (!('learningScore' in data) || (data.learningScore is int && data.learningScore >= 0 && data.learningScore <= 126))
         && data.updatedAt == request.time;
     }
 

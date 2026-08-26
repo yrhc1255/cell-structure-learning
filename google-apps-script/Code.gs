@@ -1,6 +1,6 @@
 const SPREADSHEET_ID = '1SS7EigDpKZGfPbp3czhIAVwylKC91eon_I35LqRjRbo';
 const SHEET_NAME = '成績總表';
-const HEADERS = ['時間', '班級', '座號', '姓名', '形成性評量（一）', '形成性評量（二）', '細胞學習英雄榜最高分'];
+const HEADERS = ['時間', '班級', '座號', '姓名', '形成性評量（一）', '形成性評量（二）', '細胞學習英雄榜最高分', '學習總分'];
 
 function doPost(e) {
   const lock = LockService.getScriptLock();
@@ -27,7 +27,8 @@ function doPost(e) {
     const incomingHero = validScore_(payload.challengeScore, 0, 60000);
     const existingHero = highestScore_(currentRows, 6, 0, 60000);
     const heroBest = incomingHero === '' ? existingHero : Math.max(Number(existingHero || 0), Number(incomingHero));
-    const values = [[new Date(), classCode, seatNumber, nameCode, assess1, assess2, heroBest]];
+    const learningScore = scoreOrExisting_(payload.learningScore, latestScore_(currentRows, 7, 0, 126), 0, 126);
+    const values = [[new Date(), classCode, seatNumber, nameCode, assess1, assess2, heroBest, learningScore]];
 
     if (rows.length) {
       sheet.getRange(rows[0], 1, 1, HEADERS.length).setValues(values);

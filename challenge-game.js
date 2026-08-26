@@ -29,7 +29,8 @@
   ];
   const answerNames = items.map(item => item.answer);
   const completed = new Set(state.completedModules || []);
-  if (!completed.has('reading')) { location.replace('12_reading-literacy.html'); return; }
+  const teacherMode = window.CellLearningMode?.isTeacher() === true;
+  if (!teacherMode && !completed.has('reading')) { location.replace('12_reading-literacy.html'); return; }
 
   const escapeText = value => String(value).replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
   const shuffle = values => {
@@ -154,13 +155,16 @@
     clearInterval(timer);
     document.querySelector('#game-board').hidden = true;
     const best = Math.max(Number(state.challengeScore || 0), score);
-    completed.add('challenge');
-    state = {...state,challengeScore:best,completedModules:[...completed],currentPage:'challenge'};
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (!teacherMode) {
+      completed.add('challenge');
+      state = {...state,challengeScore:best,completedModules:[...completed],currentPage:'challenge'};
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
     const result = document.querySelector('#game-result');
     result.hidden = false;
-    result.innerHTML = `<p class="eyebrow">${completedAll ? '挑戰完成' : '生命用完了'}</p><h2>本次得分：${score.toLocaleString('zh-TW')} 分</h2><p>你的最高分是 ${best.toLocaleString('zh-TW')} 分。Firebase 成績與英雄榜都只保留最高分。</p><p id="score-sync-status" class="score-sync-status">正在上傳成績……</p><div class="game-result-actions"><button type="button" class="secondary-button" id="game-retry">再玩一次</button><a class="primary-button" href="14_learning-result.html">查看學習結果 →</a></div>`;
+    result.innerHTML = `<p class="eyebrow">${completedAll ? '挑戰完成' : '生命用完了'}</p><h2>本次得分：${score.toLocaleString('zh-TW')} 分</h2><p>${teacherMode?'教師模式可正常操作遊戲，但不保存也不上傳分數。':`你的最高分是 ${best.toLocaleString('zh-TW')} 分。Firebase 成績與英雄榜都只保留最高分。`}</p><p id="score-sync-status" class="score-sync-status">${teacherMode?'教師模式不會上傳成績。':'正在上傳成績……'}</p><div class="game-result-actions"><button type="button" class="secondary-button" id="game-retry">再玩一次</button><a class="primary-button" href="14_learning-result.html">查看學習結果 →</a></div>`;
     document.querySelector('#game-retry').addEventListener('click', startGame);
+    if (teacherMode) return;
     const [scoreUpload, leaderboardUpload] = await Promise.allSettled([
       window.uploadCellScores?.(state),
       window.uploadChallengeHighScore?.(state,score)

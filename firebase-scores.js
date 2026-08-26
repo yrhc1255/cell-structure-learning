@@ -43,7 +43,8 @@
         nameCode: String(state.nameCode).trim(),
         assess1Score: Number.isInteger(state.assess1Score) ? state.assess1Score : null,
         assess2Score: Number.isInteger(state.assess2Score) ? state.assess2Score : null,
-        challengeScore: Number.isInteger(state.challengeScore) ? state.challengeScore : null
+        challengeScore: Number.isInteger(state.challengeScore) ? state.challengeScore : null,
+        learningScore: Number.isInteger(state.learningScore) ? state.learningScore : null
       })
     }), 10000, '教師總表傳送');
   }
@@ -60,6 +61,7 @@
   }
 
   window.uploadCellScores = async function uploadCellScores(state) {
+    if (window.CellLearningMode?.isTeacher()) return {firebase:'skipped', googleSheets:'skipped'};
     const { classCode, seatNumber, nameCode } = state || {};
     if (!classCode || !seatNumber || !nameCode) {
       setStatus('缺少班級代號、座號或名稱代碼，分數暫存在本機。', 'error');
@@ -70,6 +72,7 @@
     if (Number.isInteger(state.assess1Score)) scores.assess1Score = state.assess1Score;
     if (Number.isInteger(state.assess2Score)) scores.assess2Score = state.assess2Score;
     if (Number.isInteger(state.challengeScore)) scores.challengeScore = state.challengeScore;
+    if (Number.isInteger(state.learningScore)) scores.learningScore = state.learningScore;
     if (!Object.keys(scores).length) return;
 
     const recordId = [classCode, seatNumber].map(safePart).join('__');
