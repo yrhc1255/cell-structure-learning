@@ -58,6 +58,7 @@
     let startScroll = 0;
     nav.addEventListener('pointerdown', event => {
       if (event.pointerType && event.pointerType !== 'mouse') return;
+      if (event.target.closest('a,button,input,select')) return;
       dragging = true;
       moved = false;
       startX = event.clientX;
